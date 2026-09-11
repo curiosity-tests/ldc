@@ -1,6 +1,7 @@
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 
 name: Main
+run-name: "Main ${{ inputs.leg || github.event_name }} ${{ inputs.racecar_run }}"
 on:
   pull_request:
   push:
@@ -9,11 +10,27 @@ on:
     tags: # explicitly needed to run for all tags, due to the branches filter above
       - '**'
 
+  workflow_dispatch:
+    inputs:
+      leg:
+        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        type: choice
+        options: [instrumented, baseline]
+        default: baseline
+      profile:
+        description: "CrashOverride chalk profile"
+        type: string
+        default: curiosity-tests-racecar
+      racecar_run:
+        description: "racecar correlation token, echoed into the run name"
+        type: string
+        default: ""
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
   LLVM_VERSION: 22.1.8
   CLANG_MAJOR: 22
 
@@ -91,55 +108,6 @@ jobs:
               -DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++
               -DD_COMPILER_FLAGS="-O -flto=full -defaultlib=phobos2-ldc-lto,druntime-ldc-lto"
               -DEXTRA_CXXFLAGS=-flto=full
-            with_pgo: true
-
-          - job_name: macOS x86_64
-            os: macos-26-intel
-            arch: x86_64
-            # * CMAKE_OSX_SYSROOT: Homebrew clang apparently requires the Command Line Tools instead of Xcode: https://github.com/actions/runner-images/issues/10035#issue-2344536514
-            # * https://github.com/ldc-developers/ldc/issues/4462:
-            #   When using LTO, we need to explicitly export ~all symbols for plugin support via `ld64 -exported_symbol '__*'`.
-            #   Additionally `-w` to suppress resulting linker warnings.
-            extra_cmake_flags: >-
-              -DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
-              -DCMAKE_C_COMPILER=/usr/local/opt/llvm@${CLANG_MAJOR}/bin/clang
-              -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm@${CLANG_MAJOR}/bin/clang++
-              -DD_COMPILER_FLAGS="-O -flto=full -defaultlib=phobos2-ldc-lto,druntime-ldc-lto -L-exported_symbol '-L__*' -L-w"
-              -DEXTRA_CXXFLAGS=-flto=full
-            with_pgo: true
-
-          - job_name: macOS arm64
-            os: macos-26
-            arch: arm64
-            extra_cmake_flags: >-
-              -DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
-              -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@${CLANG_MAJOR}/bin/clang
-              -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@${CLANG_MAJOR}/bin/clang++
-              -DD_COMPILER_FLAGS="-O -flto=full -defaultlib=phobos2-ldc-lto,druntime-ldc-lto -L-exported_symbol '-L__*' -L-w"
-              -DEXTRA_CXXFLAGS=-flto=full
-            with_pgo: true
-
-          - job_name: Windows x64
-            os: windows-2025
-            arch: x64
-            base_cmake_flags: >-
-              -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-            extra_cmake_flags: >-
-              "-DD_COMPILER_FLAGS=-O -flto=full -defaultlib=phobos2-ldc-lto,druntime-ldc-lto"
-              -DEXTRA_CXXFLAGS=-flto=full
-            with_pgo: true
-
-          - job_name: Windows x86
-            os: windows-2025
-            arch: x86
-            base_cmake_flags: >-
-              -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-            # `RT_CFLAGS=-m32` needed to make 64-bit clang-cl output 32-bit code for druntime integration tests
-            extra_cmake_flags: >-
-              -DRT_CFLAGS=-m32
-            # Undefined symbol errors with FullLTO; ThinLTO used to work, but apparently miscompiles a lexer.d:138 assertion since v1.33.
-            #  "-DD_COMPILER_FLAGS=-O -flto=thin -defaultlib=phobos2-ldc-lto,druntime-ldc-lto"
-            #  -DEXTRA_CXXFLAGS=-flto=thin
             with_pgo: true
 
           - job_name: FreeBSD x86_64
@@ -474,6 +442,7 @@ jobs:
 
 
   merge-macos:
+    if: false   # racecar: non-Linux runner, not measured here
     name: macOS universal
     runs-on: macos-latest
     timeout-minutes: 30
@@ -484,6 +453,7 @@ jobs:
         uses: ./.github/actions/merge-macos
 
   merge-windows:
+    if: false   # racecar: non-Linux runner, not measured here
     name: Windows multilib
     runs-on: windows-2025
     timeout-minutes: 30
@@ -526,4 +496,5 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Upload all artifacts to GitHub release
+        continue-on-error: true   # racecar: scan/report/push step, must not fail the build
         uses: ./.github/actions/upload-to-github
