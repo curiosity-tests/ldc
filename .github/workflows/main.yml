@@ -25,6 +25,9 @@ on:
         description: "racecar correlation token, echoed into the run name"
         type: string
         default: ""
+permissions:
+  contents: read
+  id-token: write
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -536,6 +539,7 @@ jobs:
       - merge-windows
       - extract-addons
     permissions:
+      id-token: write
       contents: write
     steps:
       - uses: crashappsec/action-checkout@main
