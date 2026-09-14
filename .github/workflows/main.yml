@@ -174,9 +174,16 @@ jobs:
               ln -s /usr/bin/node /opt/bin/node
             fi
           fi
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
         with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
           submodules: true
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Install prerequisites
         if: |
           !startsWith(matrix.container_image, 'alpine') && !matrix.vm_os
@@ -306,9 +313,16 @@ jobs:
     env:
       GHA_BASH_SHELL: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
         with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
           submodules: true
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Install prerequisites
         uses: ./.github/actions/1-setup
         with:
@@ -366,9 +380,16 @@ jobs:
     env:
       GHA_BASH_SHELL: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
         with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
           submodules: true
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Install prerequisites
         uses: ./.github/actions/1-setup
         with:
@@ -448,7 +469,15 @@ jobs:
     timeout-minutes: 30
     needs: build-native
     steps:
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
+        with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Merge x86_64 & arm64 packages to universal one
         uses: ./.github/actions/merge-macos
 
@@ -459,9 +488,16 @@ jobs:
     timeout-minutes: 30
     needs: build-native
     steps:
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
         with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
           submodules: true # Phobos needed for building arm64 libs
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Merge x64 & x86 packages to multilib one & build installer
         uses: ./.github/actions/merge-windows
 
@@ -474,7 +510,15 @@ jobs:
       - build-cross   # Android
       - merge-windows # Windows multilib
     steps:
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
+        with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Extract addon packages
         uses: ./.github/actions/extract-addon-packages
 
@@ -494,7 +538,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: crashappsec/action-checkout@main
+        with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          lfs: false
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
       - name: Upload all artifacts to GitHub release
         continue-on-error: true   # racecar: scan/report/push step, must not fail the build
         uses: ./.github/actions/upload-to-github
